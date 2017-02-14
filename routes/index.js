@@ -20,27 +20,48 @@
 
 var keystone = require('keystone');
 var middleware = require('./middleware');
+var _ = require('lodash');
 var importRoutes = keystone.importer(__dirname);
 
+var Content = keystone.list('Content');
 // Common Middleware
 keystone.pre('routes', middleware.initLocals);
 keystone.pre('render', middleware.flashMessages);
 
 // Import Route Controllers
 var routes = {
-	views: importRoutes('./views'),
+	views: importRoutes('./views')
 };
 
 // Setup Route Bindings
 exports = module.exports = function (app) {
 	// Views
 	app.get('/cms', routes.views.index);
+	app.get('/api/content', function (req, res) {
 
-/*
-	app.get('/blog/:category?', routes.views.blog);
-	app.get('/blog/post/:post', routes.views.post);
-	app.all('/contact', routes.views.contact);
-*/
+		function clean(x) {
+			return _.omitBy(x.toObject(),
+				function (val, key) {
+					return _.first(key) === '_';
+				})
+		}
+
+		Content.model.find()
+			.exec()
+			.then(function (results) {
+				var content = _.map(results, clean);
+				res.json(content);
+			}, function (err) {
+				res.status(500).json(err);
+			})
+
+	});
+
+	/*
+	 app.get('/blog/:category?', routes.views.blog);
+	 app.get('/blog/post/:post', routes.views.post);
+	 app.all('/contact', routes.views.contact);
+	 */
 
 
 	// NOTE: To protect a route so that only admins can see it, use the requireUser middleware:
